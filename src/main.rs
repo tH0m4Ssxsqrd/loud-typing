@@ -5,9 +5,9 @@ use clap::Parser;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -43,47 +43,49 @@ fn get_file_paths(dir: &str) -> Vec<PathBuf> {
 
 #[tokio::main]
 async fn main() {
-  let args = Args::parse();
-  let total_keys = args.total_keys;
+    let args = Args::parse();
+    let total_keys = args.total_keys;
 
-  let device_state = DeviceState::new();
-  let mut key_states: HashMap<Keycode, bool> = HashMap::new();
+    let device_state = DeviceState::new();
+    let mut key_states: HashMap<Keycode, bool> = HashMap::new();
 
-  let paths = get_file_paths("./sounds");
+    let paths = get_file_paths("./sounds");
 
-  let player = Arc::new(tokio::sync::Mutex::new(Sound::new(&paths, total_keys).expect("Couldn't create sound player.")));
+    let player = Arc::new(tokio::sync::Mutex::new(
+        Sound::new(&paths, total_keys).expect("Couldn't create sound player."),
+    ));
 
-  let (tx, mut rx) = tokio::sync::mpsc::channel::<Keycode>(100);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Keycode>(100);
 
-  let player_clone = Arc::clone(&player);
-  let _handle = tokio::spawn(async move {
-      while let Some(key) = rx.recv().await {
-          let key_as_i32 = key as i32;
-          let player = player_clone.lock().await;
-          key_down(key_as_i32, &*player, total_keys)
-              .map_err(|err| eprintln!("ERROR: {err}"))
-              .expect("Couldn't process event.");
-      }
-  });
+    let player_clone = Arc::clone(&player);
+    let _handle = tokio::spawn(async move {
+        while let Some(key) = rx.recv().await {
+            let key_as_i32 = key as i32;
+            let player = player_clone.lock().await;
+            key_down(key_as_i32, &player, total_keys)
+                .map_err(|err| eprintln!("ERROR: {err}"))
+                .expect("Couldn't process event.");
+        }
+    });
 
-  loop {
-      let keys: Vec<Keycode> = device_state.get_keys();
+    loop {
+        let keys: Vec<Keycode> = device_state.get_keys();
 
-      // Check for key down events
-      for key in &keys {
-          if key_states.get(key).is_none() {
-              tx.send(*key).await.unwrap();
-              key_states.insert(*key, true);
-          }
-      }
+        // Check for key down events
+        for key in &keys {
+            if key_states.get(key).is_none() {
+                tx.send(*key).await.expect("Could not send key through thread");
+                key_states.insert(*key, true);
+            }
+        }
 
-      // Check for key up events
-      let keys_up: Vec<Keycode> = key_states.keys().copied().collect();
-      for key in keys_up {
-          if !keys.contains(&key) {
-              key_up(key);
-              key_states.remove(&key);
-          }
-      }
-  }
+        // Check for key up events
+        let keys_up: Vec<Keycode> = key_states.keys().copied().collect();
+        for key in keys_up {
+            if !keys.contains(&key) {
+                key_up(key);
+                key_states.remove(&key);
+            }
+        }
+    }
 }
