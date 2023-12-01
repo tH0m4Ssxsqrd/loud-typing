@@ -10,4 +10,4 @@ inputbot = "0.6"
 rodio = "0.17"
 device_query = "1.1"
 time = "0.3.30"
-rand = "0.8.5"
+clap = { version = "4.4.8", features = ["derive"] }
