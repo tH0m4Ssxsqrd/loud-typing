@@ -28,14 +28,14 @@ fn get_file_paths(dir: &str) -> Vec<PathBuf> {
     let mut file_paths = Vec::new();
 
     if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
+        entries.flatten().for_each(|entry| {
             // If the entry is a file, add its path to the vector
             if let Ok(metadata) = entry.metadata() {
                 if metadata.is_file() {
                     file_paths.push(entry.path());
                 }
             }
-        }
+        });
     }
 
     file_paths
@@ -64,7 +64,7 @@ async fn main() {
             let player = player_clone.lock().await;
             key_down(key_as_i32, &player, total_keys)
                 .map_err(|err| eprintln!("ERROR: {err}"))
-                .expect("Couldn't process event.");
+                .expect("Could not process event.");
         }
     });
 
