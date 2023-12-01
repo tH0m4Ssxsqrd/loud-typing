@@ -14,6 +14,8 @@ pub struct Sound {
     total_keys: i32,
 }
 
+unsafe impl Send for Sound {}
+
 impl Sound {
     pub fn new(paths: &[PathBuf], total_keys: i32) -> Result<Self, Box<dyn Error>> {
         let (stream, handle) = OutputStream::try_default()?;

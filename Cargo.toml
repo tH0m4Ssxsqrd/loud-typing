@@ -11,3 +11,4 @@ rodio = "0.17"
 device_query = "1.1"
 time = "0.3.30"
 clap = { version = "4.4.8", features = ["derive"] }
+tokio = { version = "1.34.0", features = ["full"] }
